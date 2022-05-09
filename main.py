@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-from pprint import pprint
+
 
 def get_html(url):
     try:
@@ -12,18 +12,26 @@ def get_html(url):
         return False
 
 
+def get_full_name(people):
+    link = people.find('a', class_='news-item-title2')['href']
+    return link
+
+
 def get_data(html):
-    soup = BeautifulSoup(html, 'html.parser')
+    with open(html, 'r') as f:
+        data = f.read()
+
+    soup = BeautifulSoup(data, 'html.parser')
     peoples = soup.find('div',
                         id='dle-content').findAll('div',
                                                   class_='news-item2 clearfix')
     for people in peoples:
-        full_name = people.find('a', class_='news-item-title2').text
-        print(full_name)
+        link = get_full_name(people)
+        print(link)
     # pprint(peoples)
 
 
 if __name__ == '__main__':
-    html = get_html('https://lugpost.ru/vprestupleniya/')
-    if html:
-        get_data(html)
+    # html = get_html('https://lugpost.ru/vprestupleniya/')
+    # if html:
+    get_data('data.html')
