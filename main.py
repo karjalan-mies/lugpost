@@ -1,10 +1,11 @@
+from wsgiref import headers
 import requests
 from bs4 import BeautifulSoup
 
 
 def get_html(url):
     try:
-        result = requests.get(url)
+        result = requests.get(url, headers=headers)
         result.raise_for_status()
         return result.text
     except(requests.RequestException, ValueError):

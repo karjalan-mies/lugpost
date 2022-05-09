@@ -1,11 +1,14 @@
 from bs4 import BeautifulSoup
 import requests
 
+headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:45.0) Gecko/20100101 Firefox/45.0'
+      }
 
 
 def get_html(url):
     try:
-        result = requests.get(url)
+        result = requests.get(url, headers=headers)
         result.raise_for_status()
         return result.text
     except(requests.RequestException, ValueError):
