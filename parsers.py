@@ -1,10 +1,15 @@
+import os
+from pathlib import Path
+
 from bs4 import BeautifulSoup
 import requests
 from transliterate import translit
 
+
 headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:45.0) Gecko/20100101 Firefox/45.0'
-      }
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:45.0)' +
+                      'Gecko/20100101 Firefox/45.0'
+          }
 
 
 def translit_it(text: str)-> str:
@@ -13,7 +18,9 @@ def translit_it(text: str)-> str:
 
 def process_text(text: str) -> str:
     text = translit_it(text)
-    return text.lower().replace(':', '').strip().replace(' ', '_')
+    text = text.lower().replace(':', '').replace('\'', '')
+    text = text.strip().replace(' ', '_')
+    return text
 
 
 def get_html(url):
@@ -27,12 +34,21 @@ def get_html(url):
 
 
 def get_and_save_image(soup):
-    img_url = soup.find('img', class_='xfieldimage foto', src=True)['src']
-    img_file = requests.get(f'http://lugpost.ru{img_url}')
-    file_name = img_url.split('/')[-1]
-    with open(file_name, 'wb') as f:
-        f.write(img_file.content)
-    return file_name
+    try:
+        img_url = soup.find('img', class_='xfieldimage foto', src=True)['src']
+        # print(img_url)
+        img_file = requests.get(f'http://lugpost.ru{img_url}')
+
+        if not os.path.exists('Photo'):
+            os.makedirs('Photo')
+
+        file_name = img_url.split("/")[-1]
+        file_path = Path() / 'Photo' / file_name
+        with open(file_path, 'wb') as f:
+            f.write(img_file.content)
+        return file_name
+    except(TypeError):
+        print('The image does not exist')
 
 
 def get_profile_data(soup):
@@ -46,27 +62,19 @@ def get_profile_data(soup):
 
 
 def get_people_data(link):
-    # with open('people_data.html', 'r') as f:
-    #     people_data = f.read()
     people_data = requests.get(link, headers=headers)
-    print(people_data)
     soup = BeautifulSoup(people_data.text, 'html.parser')
-    # file_name = get_and_save_image(soup)
+    file_name = get_and_save_image(soup)
     l_name, f_name, patronymic = soup.find('h1').text.split()
     people_info = {}
     people_info['last_name'] = l_name
     people_info['first_name'] = f_name
-    people_info['patronymic'] = patronymic    
+    people_info['patronymic'] = patronymic
     profile = get_profile_data(soup)
     people_info = {**people_info, **profile}
-    # people_info['file_name'] = file_name
+    people_info['file_name'] = file_name
     return people_info
 
 
 if __name__ == '__main__':
-#     html = get_html(
-# 'https://lugpost.ru/vprestupleniya/124394-budaevskiy-anton-olegovich.html')
-#     if html:
-#         with open('people_data.html', 'w', encoding='utf-8') as f:
-#             f.write(html)
     get_people_data()
