@@ -69,9 +69,9 @@ def get_profile_data(soup):
     people_profile = soup.find('div', class_='full-text video-box clearfix')
     people_profile = people_profile.findAll('b')
     profile = {}
-    for element in people_profile:
-        if element.text and element.find_next('font').text:
-            profile[process_text(element.text)] = element.find_next('font').text
+    for item in people_profile:
+        if item.text and item.find_next('font').text:
+            profile[process_text(item.text)] = item.find_next('font').text
     return profile
 
 
