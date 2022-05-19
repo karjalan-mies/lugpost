@@ -1,3 +1,4 @@
+from datetime import datetime
 from os import makedirs, path
 from pathlib import Path
 from random import randint
@@ -6,11 +7,7 @@ from bs4 import BeautifulSoup
 import requests
 from transliterate import translit
 
-
-headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:45.0)' +
-                      'Gecko/20100101 Firefox/45.0'
-          }
+from main import get_html
 
 
 def translit_it(text: str) -> str:
@@ -24,22 +21,24 @@ def process_text(text: str) -> str:
     return text
 
 
-def get_unique_file_name(file_path):
+def remove_line_break(text: str) -> str:
+    return text.replace('\r\n', ' ')
+
+
+def get_unique_file_name(file_path: str) -> str:
     if path.exists(file_path):
         only_path = path.split(file_path)[0]
         file_name, file_ext = path.splitext(path.split(file_path)[-1])
-        new_file_name = file_name + str(randint(1, 9)) + file_ext
-        print(new_file_name)
+        new_file_name = file_name + str(randint(10000, 99999)) + file_ext
         new_path = Path() / only_path / new_file_name
         return get_unique_file_name(new_path)
     else:
         return file_path
 
 
-def save_image(img_file, file_name):
+def save_image(img_file, file_name: str) -> str:
     if not path.exists('Photo'):
         makedirs('Photo')
-
     file_path = Path() / 'Photo' / file_name
     file_path = get_unique_file_name(file_path)
     with open(file_path, 'wb') as f:
@@ -47,7 +46,7 @@ def save_image(img_file, file_name):
     return file_name
 
 
-def get_image(soup):
+def get_image(soup: str) -> tuple:
     try:
         img_url = soup.find('img', class_='xfieldimage foto', src=True)['src']
         file_name = img_url.split("/")[-1]
@@ -55,7 +54,7 @@ def get_image(soup):
         return img_file, file_name
     except(TypeError):
         print('The image does not exist')
-        return ['', '']
+        return '', ''
 
 
 def get_persons_photo(soup: str) -> None:
@@ -65,28 +64,42 @@ def get_persons_photo(soup: str) -> None:
     return file_name
 
 
-def get_profile_data(soup):
+def get_profile_data(soup: str) -> str:
     people_profile = soup.find('div', class_='full-text video-box clearfix')
     people_profile = people_profile.findAll('b')
     profile = {}
     for item in people_profile:
         if item.text and item.find_next('font').text:
-            profile[process_text(item.text)] = item.find_next('font').text
+            cleared_item = remove_line_break(item.find_next('font').text)
+            profile[process_text(item.text)] = cleared_item
     return profile
 
 
-def get_people_data(link):
-    people_data = requests.get(link, headers=headers)
-    soup = BeautifulSoup(people_data.text, 'html.parser')
-    file_name = get_persons_photo(soup)
-    l_name, f_name, patronymic = soup.find('h1').text.split()
+def get_people_data(url: str) -> dict:
+    html = get_html(url)
+    soup = BeautifulSoup(html, 'html.parser')
+    image_file_name = get_persons_photo(soup)
+    number_of_name_values = len(soup.find('h1').text.split())
+    if number_of_name_values == 3:
+        l_name, f_name, patronymic = soup.find('h1').text.split()
+    elif number_of_name_values == 2:
+        l_name, f_name = soup.find('h1').text.split()
+        patronymic = ''
+    else:
+        print('The name has more than 3 values\n' +
+              f'{soup.find("h1").text}')
+        return False
     people_info = {}
+    people_info['data_sozdaniya'] = datetime.now().strftime('%d.%m.%Y')
+    people_info['istochnik_informacii'] = 'lugpost.ru'
     people_info['familiya'] = l_name
     people_info['imya'] = f_name
     people_info['otchestvo'] = patronymic
     profile = get_profile_data(soup)
-    people_info = {**people_info, **profile}
-    people_info['file_name'] = file_name
+    if 'data_rozhdenija' in profile:
+        people_info['data_rozhdenija'] = profile['data_rozhdenija']
+    people_info['imya_faila'] = image_file_name
+    people_info['papka'] = 'Photo'
     return people_info
 
 

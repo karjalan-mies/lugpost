@@ -1,20 +1,16 @@
 import csv
+import os
 import requests
 
 from bs4 import BeautifulSoup
 
+from config import FIELDS, HEADERS, URL
 from parsers import get_people_data
-
-
-headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:45.0)' +
-                      'Gecko/20100101 Firefox/45.0'
-          }
 
 
 def get_html(url: str) -> str:
     try:
-        result = requests.get(url, headers=headers)
+        result = requests.get(url, headers=HEADERS)
         result.raise_for_status()
         return result.text
     except(requests.RequestException, ValueError):
@@ -35,24 +31,32 @@ def get_lugpost_data(html: str) -> list:
                                                  class_='news-item2 clearfix')
     for person in people:
         link = get_person_link(person)
-        lugpost_data.append(get_people_data(link))
+        people_data = get_people_data(link)
+        if people_data:
+            lugpost_data.append(people_data)
     save_to_file(lugpost_data)
 
 
-def save_to_file(lugpost_data: list):
-    with open('export_data.csv', 'w', encoding='utf-8', newline='') as f:
-        fields = ['familiya', 'imya', 'otchestvo', 'data_rozhdenija',
-                  'mesto_rozhdenija', 'dejatelnost', 'punkt_obvinenija',
-                  'facebook', 'twitter', 'vk', 'dopolnitelnaja_informatsija',
-                  'file_name', ]
-        writer = csv.DictWriter(f, fields, delimiter=';')
+def create_file():
+    with open('export_data.csv', 'a', encoding='utf-8', newline='') as f:
+        writer = csv.DictWriter(f, fields=FIELDS, delimiter=';')
         writer.writeheader()
+
+
+def save_to_file(lugpost_data: list) -> None:
+    if not os.path.exists('export_data.csv'):
+        create_file()
+    with open('export_data.csv', 'a', encoding='utf-8', newline='') as f:
+        writer = csv.DictWriter(f, fields=FIELDS, delimiter=';')
         for person in lugpost_data:
             writer.writerow(person)
 
 
 if __name__ == '__main__':
-    html = get_html('https://lugpost.ru/vprestupleniya/')
+    html = get_html(URL)
     if html:
+        get_lugpost_data(html)
+    for i in range(2, 74):
+        html = get_html(f'{URL}/page{i}/')
         get_lugpost_data(html)
     print('The program was successfully completed.')
